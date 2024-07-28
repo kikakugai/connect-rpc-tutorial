@@ -4,9 +4,11 @@ import (
 	filev1 "connect-rpc-tutorial/gen/file/v1"
 	"connect-rpc-tutorial/gen/file/v1/filev1connect"
 	"context"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
@@ -16,8 +18,36 @@ import (
 type FileServer struct{}
 
 // Download implements filev1connect.FileServiceHandler.
-func (fs *FileServer) Download(context.Context, *connect.Request[filev1.DownloadRequest], *connect.ServerStream[filev1.DownloadResponse]) error {
-	panic("unimplemented")
+func (fs *FileServer) Download(ctx context.Context, req *connect.Request[filev1.DownloadRequest], stream *connect.ServerStream[filev1.DownloadResponse]) error {
+	log.Println("Download was invoked")
+
+	filename := req.Msg.Filename
+	path := "/Users/norikiyo/workspace/connect-rpc-tutorial/storage/" + filename
+
+	file, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	buf := make([]byte, 5)
+	for {
+		n, err := file.Read(buf)
+		if n == 0 || err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		sendErr := stream.Send(&filev1.DownloadResponse{Data: buf[:n]})
+		if sendErr != nil {
+			return sendErr
+		}
+		time.Sleep(1 * time.Second)
+	}
+
+	return nil
 }
 
 // ListFiles implements filev1connect.FileServiceHandler.

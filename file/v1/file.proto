@@ -10,7 +10,7 @@ message ListFilesResponse {
 };
 
 message DownloadRequest {
-    string filenames = 1;
+    string filename = 1;
 };
 message DownloadResponse {
     bytes data = 1;
