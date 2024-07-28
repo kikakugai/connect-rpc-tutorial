@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package file.v1;
+
+option go_package = "connect-rpc-tutorial/gen/file/v1;filev1";
+
+message ListFilesRequest {};
+message ListFilesResponse {
+    repeated string filenames = 1;
+};
+
+service FileService {
+    // Unary RPC定義
+    rpc ListFiles (ListFilesRequest) returns (ListFilesResponse);
+};
