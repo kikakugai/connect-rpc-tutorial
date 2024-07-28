@@ -26,6 +26,7 @@ func (fs *FileServer) Download(ctx context.Context, req *connect.Request[filev1.
 
 	file, err := os.Open(path)
 	if err != nil {
+		log.Println(err)
 		return err
 	}
 	defer file.Close()
