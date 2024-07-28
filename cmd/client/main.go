@@ -13,13 +13,30 @@ import (
 func main() {
 	client := filev1connect.NewFileServiceClient(
 		http.DefaultClient,
-		"http://localhost:8080",
-		// gRPCで通信したい場合は、以下を指定する
-		// connect.WithGRPC(),
+		"https://localhost:8080",
 	)
 
-	callListFiles(client)
-	callDownload(client)
+	// callListFiles(client)
+	// callDownload(client)
+	callUpload(client)
+}
+
+func callUpload(client filev1connect.FileServiceClient) {
+	stream := client.Upload(context.Background())
+	defer stream.Close()
+
+	// Example of sending data
+	err := stream.Send(&filev1.UploadRequest{Data: []byte("example data")})
+	if err != nil {
+		log.Panicln(err)
+	}
+
+	// Example of receiving response
+	for stream.Receive() {
+		res := stream.Msg()
+		log.Printf("Response from Upload: %v", res)
+	}
+
 }
 
 func callListFiles(client filev1connect.FileServiceClient) {

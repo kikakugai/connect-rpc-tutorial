@@ -11,6 +11,9 @@ import (
 	"os"
 	"time"
 
+	connectcors "connectrpc.com/cors"
+	"github.com/rs/cors"
+
 	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -29,6 +32,7 @@ func (fs *FileServer) Upload(ctx context.Context, stream *connect.BidiStream[fil
 			return stream.Send(&filev1.UploadResponse{Size: int32(buf.Len())})
 		}
 		if err != nil {
+			log.Panicln(err)
 			return err
 		}
 
@@ -96,11 +100,29 @@ func (fs *FileServer) ListFiles(ctx context.Context, req *connect.Request[filev1
 	return res, nil
 }
 
+func withCORS(h http.Handler) http.Handler {
+	middleware := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://localhost:5173"},
+		AllowedMethods: connectcors.AllowedMethods(),
+		AllowedHeaders: connectcors.AllowedHeaders(),
+		ExposedHeaders: connectcors.ExposedHeaders(),
+	})
+	return middleware.Handler(h)
+}
+
 func main() {
-	fs := &FileServer{}
 	mux := http.NewServeMux()
-	path, handler := filev1connect.NewFileServiceHandler(fs)
+	path, handler := filev1connect.NewFileServiceHandler(&FileServer{})
+
 	mux.Handle(path, handler)
-	log.Println("server started...")
-	http.ListenAndServe("localhost:8080", h2c.NewHandler(mux, &http2.Server{}))
+
+	server := &http.Server{
+		Addr:    ":8080",
+		Handler: withCORS(h2c.NewHandler(mux, &http2.Server{})),
+	}
+
+	log.Println("Starting server on :8080")
+	if err := server.ListenAndServe(); err != nil {
+		log.Panicf("Failed to start server: %v", err)
+	}
 }
