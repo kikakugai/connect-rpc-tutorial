@@ -35,18 +35,23 @@ const (
 const (
 	// FileServiceListFilesProcedure is the fully-qualified name of the FileService's ListFiles RPC.
 	FileServiceListFilesProcedure = "/file.v1.FileService/ListFiles"
+	// FileServiceDownloadProcedure is the fully-qualified name of the FileService's Download RPC.
+	FileServiceDownloadProcedure = "/file.v1.FileService/Download"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
 	fileServiceServiceDescriptor         = v1.File_file_v1_file_proto.Services().ByName("FileService")
 	fileServiceListFilesMethodDescriptor = fileServiceServiceDescriptor.Methods().ByName("ListFiles")
+	fileServiceDownloadMethodDescriptor  = fileServiceServiceDescriptor.Methods().ByName("Download")
 )
 
 // FileServiceClient is a client for the file.v1.FileService service.
 type FileServiceClient interface {
 	// Unary RPC定義
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
+	// Server Streaming RPC定義
+	Download(context.Context, *connect.Request[v1.DownloadRequest]) (*connect.ServerStreamForClient[v1.DownloadResponse], error)
 }
 
 // NewFileServiceClient constructs a client for the file.v1.FileService service. By default, it uses
@@ -65,12 +70,19 @@ func NewFileServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(fileServiceListFilesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		download: connect.NewClient[v1.DownloadRequest, v1.DownloadResponse](
+			httpClient,
+			baseURL+FileServiceDownloadProcedure,
+			connect.WithSchema(fileServiceDownloadMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // fileServiceClient implements FileServiceClient.
 type fileServiceClient struct {
 	listFiles *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
+	download  *connect.Client[v1.DownloadRequest, v1.DownloadResponse]
 }
 
 // ListFiles calls file.v1.FileService.ListFiles.
@@ -78,10 +90,17 @@ func (c *fileServiceClient) ListFiles(ctx context.Context, req *connect.Request[
 	return c.listFiles.CallUnary(ctx, req)
 }
 
+// Download calls file.v1.FileService.Download.
+func (c *fileServiceClient) Download(ctx context.Context, req *connect.Request[v1.DownloadRequest]) (*connect.ServerStreamForClient[v1.DownloadResponse], error) {
+	return c.download.CallServerStream(ctx, req)
+}
+
 // FileServiceHandler is an implementation of the file.v1.FileService service.
 type FileServiceHandler interface {
 	// Unary RPC定義
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
+	// Server Streaming RPC定義
+	Download(context.Context, *connect.Request[v1.DownloadRequest], *connect.ServerStream[v1.DownloadResponse]) error
 }
 
 // NewFileServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -96,10 +115,18 @@ func NewFileServiceHandler(svc FileServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(fileServiceListFilesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	fileServiceDownloadHandler := connect.NewServerStreamHandler(
+		FileServiceDownloadProcedure,
+		svc.Download,
+		connect.WithSchema(fileServiceDownloadMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/file.v1.FileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case FileServiceListFilesProcedure:
 			fileServiceListFilesHandler.ServeHTTP(w, r)
+		case FileServiceDownloadProcedure:
+			fileServiceDownloadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -111,4 +138,8 @@ type UnimplementedFileServiceHandler struct{}
 
 func (UnimplementedFileServiceHandler) ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("file.v1.FileService.ListFiles is not implemented"))
+}
+
+func (UnimplementedFileServiceHandler) Download(context.Context, *connect.Request[v1.DownloadRequest], *connect.ServerStream[v1.DownloadResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("file.v1.FileService.Download is not implemented"))
 }

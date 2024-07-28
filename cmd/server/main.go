@@ -15,6 +15,11 @@ import (
 
 type FileServer struct{}
 
+// Download implements filev1connect.FileServiceHandler.
+func (fs *FileServer) Download(context.Context, *connect.Request[filev1.DownloadRequest], *connect.ServerStream[filev1.DownloadResponse]) error {
+	panic("unimplemented")
+}
+
 // ListFiles implements filev1connect.FileServiceHandler.
 func (fs *FileServer) ListFiles(ctx context.Context, req *connect.Request[filev1.ListFilesRequest]) (*connect.Response[filev1.ListFilesResponse], error) {
 	log.Println("ListFiles was invoked")
