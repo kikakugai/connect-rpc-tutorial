@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	filev1 "connect-rpc-tutorial/gen/file/v1"
 	"connect-rpc-tutorial/gen/file/v1/filev1connect"
 	"context"
@@ -19,7 +20,23 @@ type FileServer struct{}
 
 // Upload implements filev1connect.FileServiceHandler.
 func (fs *FileServer) Upload(ctx context.Context, stream *connect.BidiStream[filev1.UploadRequest, filev1.UploadResponse]) error {
-	panic("unimplemented")
+	log.Println("Upload was invoked")
+
+	var buf bytes.Buffer
+	for {
+		req, err := stream.Receive()
+		if err == io.EOF {
+			return stream.Send(&filev1.UploadResponse{Size: int32(buf.Len())})
+		}
+		if err != nil {
+			return err
+		}
+
+		data := req.GetData()
+		log.Printf("Received data(bytes): %v", data)
+		log.Printf("Received data(string): %v", string(data))
+		buf.Write(data)
+	}
 }
 
 // Download implements filev1connect.FileServiceHandler.
