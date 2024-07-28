@@ -17,6 +17,11 @@ import (
 
 type FileServer struct{}
 
+// Upload implements filev1connect.FileServiceHandler.
+func (fs *FileServer) Upload(ctx context.Context, stream *connect.BidiStream[filev1.UploadRequest, filev1.UploadResponse]) error {
+	panic("unimplemented")
+}
+
 // Download implements filev1connect.FileServiceHandler.
 func (fs *FileServer) Download(ctx context.Context, req *connect.Request[filev1.DownloadRequest], stream *connect.ServerStream[filev1.DownloadResponse]) error {
 	log.Println("Download was invoked")

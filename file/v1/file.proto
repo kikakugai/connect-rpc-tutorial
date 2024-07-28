@@ -16,9 +16,18 @@ message DownloadResponse {
     bytes data = 1;
 };
 
+message UploadRequest {
+    bytes data = 1;
+};
+message UploadResponse {
+    int32 size = 1;
+};
+
 service FileService {
-    // Unary RPC定義
+    // Unary RPC
     rpc ListFiles (ListFilesRequest) returns (ListFilesResponse);
-    // Server Streaming RPC定義
+    // Server Streaming RPC
     rpc Download (DownloadRequest) returns (stream DownloadResponse);
+    // Client Streamin RPC
+    rpc Upload (stream UploadRequest) returns (stream UploadResponse);
 };

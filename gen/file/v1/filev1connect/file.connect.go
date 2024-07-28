@@ -37,6 +37,8 @@ const (
 	FileServiceListFilesProcedure = "/file.v1.FileService/ListFiles"
 	// FileServiceDownloadProcedure is the fully-qualified name of the FileService's Download RPC.
 	FileServiceDownloadProcedure = "/file.v1.FileService/Download"
+	// FileServiceUploadProcedure is the fully-qualified name of the FileService's Upload RPC.
+	FileServiceUploadProcedure = "/file.v1.FileService/Upload"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -44,14 +46,17 @@ var (
 	fileServiceServiceDescriptor         = v1.File_file_v1_file_proto.Services().ByName("FileService")
 	fileServiceListFilesMethodDescriptor = fileServiceServiceDescriptor.Methods().ByName("ListFiles")
 	fileServiceDownloadMethodDescriptor  = fileServiceServiceDescriptor.Methods().ByName("Download")
+	fileServiceUploadMethodDescriptor    = fileServiceServiceDescriptor.Methods().ByName("Upload")
 )
 
 // FileServiceClient is a client for the file.v1.FileService service.
 type FileServiceClient interface {
-	// Unary RPC定義
+	// Unary RPC
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
-	// Server Streaming RPC定義
+	// Server Streaming RPC
 	Download(context.Context, *connect.Request[v1.DownloadRequest]) (*connect.ServerStreamForClient[v1.DownloadResponse], error)
+	// Client Streamin RPC
+	Upload(context.Context) *connect.BidiStreamForClient[v1.UploadRequest, v1.UploadResponse]
 }
 
 // NewFileServiceClient constructs a client for the file.v1.FileService service. By default, it uses
@@ -76,6 +81,12 @@ func NewFileServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(fileServiceDownloadMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		upload: connect.NewClient[v1.UploadRequest, v1.UploadResponse](
+			httpClient,
+			baseURL+FileServiceUploadProcedure,
+			connect.WithSchema(fileServiceUploadMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -83,6 +94,7 @@ func NewFileServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type fileServiceClient struct {
 	listFiles *connect.Client[v1.ListFilesRequest, v1.ListFilesResponse]
 	download  *connect.Client[v1.DownloadRequest, v1.DownloadResponse]
+	upload    *connect.Client[v1.UploadRequest, v1.UploadResponse]
 }
 
 // ListFiles calls file.v1.FileService.ListFiles.
@@ -95,12 +107,19 @@ func (c *fileServiceClient) Download(ctx context.Context, req *connect.Request[v
 	return c.download.CallServerStream(ctx, req)
 }
 
+// Upload calls file.v1.FileService.Upload.
+func (c *fileServiceClient) Upload(ctx context.Context) *connect.BidiStreamForClient[v1.UploadRequest, v1.UploadResponse] {
+	return c.upload.CallBidiStream(ctx)
+}
+
 // FileServiceHandler is an implementation of the file.v1.FileService service.
 type FileServiceHandler interface {
-	// Unary RPC定義
+	// Unary RPC
 	ListFiles(context.Context, *connect.Request[v1.ListFilesRequest]) (*connect.Response[v1.ListFilesResponse], error)
-	// Server Streaming RPC定義
+	// Server Streaming RPC
 	Download(context.Context, *connect.Request[v1.DownloadRequest], *connect.ServerStream[v1.DownloadResponse]) error
+	// Client Streamin RPC
+	Upload(context.Context, *connect.BidiStream[v1.UploadRequest, v1.UploadResponse]) error
 }
 
 // NewFileServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -121,12 +140,20 @@ func NewFileServiceHandler(svc FileServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(fileServiceDownloadMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	fileServiceUploadHandler := connect.NewBidiStreamHandler(
+		FileServiceUploadProcedure,
+		svc.Upload,
+		connect.WithSchema(fileServiceUploadMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/file.v1.FileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case FileServiceListFilesProcedure:
 			fileServiceListFilesHandler.ServeHTTP(w, r)
 		case FileServiceDownloadProcedure:
 			fileServiceDownloadHandler.ServeHTTP(w, r)
+		case FileServiceUploadProcedure:
+			fileServiceUploadHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -142,4 +169,8 @@ func (UnimplementedFileServiceHandler) ListFiles(context.Context, *connect.Reque
 
 func (UnimplementedFileServiceHandler) Download(context.Context, *connect.Request[v1.DownloadRequest], *connect.ServerStream[v1.DownloadResponse]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("file.v1.FileService.Download is not implemented"))
+}
+
+func (UnimplementedFileServiceHandler) Upload(context.Context, *connect.BidiStream[v1.UploadRequest, v1.UploadResponse]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("file.v1.FileService.Upload is not implemented"))
 }
