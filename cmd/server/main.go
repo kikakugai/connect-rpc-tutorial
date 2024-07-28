@@ -6,6 +6,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 
 	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
@@ -16,10 +17,23 @@ type FileServer struct{}
 
 // ListFiles implements filev1connect.FileServiceHandler.
 func (fs *FileServer) ListFiles(ctx context.Context, req *connect.Request[filev1.ListFilesRequest]) (*connect.Response[filev1.ListFilesResponse], error) {
-	log.Println("ListFiles invoked")
+	log.Println("ListFiles was invoked")
 
-	res := connect.NewResponse(&filev1.ListFilesResponse{Filenames: []string{"test"}})
-	res.Header().Set("API-Version", "v1")
+	dir := "/Users/norikiyo/workspace/connect-rpc-tutorial/storage"
+
+	paths, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	var filenames []string
+	for _, path := range paths {
+		if !path.IsDir() {
+			filenames = append(filenames, path.Name())
+		}
+	}
+
+	res := connect.NewResponse(&filev1.ListFilesResponse{Filenames: filenames})
 
 	return res, nil
 }
